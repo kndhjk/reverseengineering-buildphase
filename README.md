@@ -18,20 +18,19 @@ The APKs deliberately use `Authorization: Bearer <key>` format in their code, bu
 
 ## Shared Key (Known Working)
 
-Both APKs accept this key (from teambeta.apk's SharedPreferences XOR decoding):
-
-```
-7a4212da71a964f875981dcfcc9d0b2e3b6db72fe5e614191b6f521dcb9fdebeaf1706c36f6f308da72a7ba762aafd3398e9113e93df0e437dfc3a153172dad7
-```
+Both APKs accept the teambeta shared key (128 hex chars / 64 bytes).
+The key can be reconstructed from teambeta.apk's SharedPreferences: 8 hex chunks stored as `api_key_chunk_0` through `api_key_chunk_7`, concatenated, then each byte XOR'd with `0x5a`.
 
 Verification:
 ```bash
 curl -X POST https://ai.elliottwen.info/auth \
-  -H "Authorization: 7a4212da71a964f875981dcfcc9d0b2e3b6db72fe5e614191b6f521dcb9fdebeaf1706c36f6f308da72a7ba762aafd3398e9113e93df0e437dfc3a153172dad7" \
+  -H "Authorization: <TEAMBETA_DERIVED_KEY>" \
   -H "Content-Type: application/json" \
   -d '{}'
 # Returns: {"signature":"..."} — HTTP 200
 ```
+
+The key format is `Authorization: <key>` — **NO Bearer prefix** (Bearer is a decoy trap).
 
 ## UNRESOLVED: Per-APK Independent Keys
 
@@ -62,13 +61,15 @@ Each APK is expected to have its own unique API key (128 hex chars) that works i
 - ✅ Traced full call chain: `Q1.run → M8.run → c6.run → t2.run → Z.b → u.j → _z05`
 - ❌ Cannot find independent key — `_z05` is fundamentally a decoy generator
 
-**Decrypted SharedPreferences values**:
-| Key | Value | Purpose |
-|-----|-------|---------|
-| `vit` | `0b5e11cfea67b7704877a1d57f07c75db1a4e6a3c18f8d1eb22ff7bf2ed4e898` | Install token (32 bytes) |
-| `_p52` | `ad48ad35df979c23` | HMAC blob (8 bytes) |
-| `vkb` | `d2c7b3a3fc4d247d01e188cbf404d47cc57af210e9f4ab7907c95fa361de5b70` | Decrypted key blob (32 bytes) |
-| `vitm` | `1780606787090` | Install timestamp |
+**Decrypted SharedPreferences values** (stored in `v_p1`):
+| Key | Type | Purpose |
+|-----|------|---------|
+| `vit` | Base64 → 32 bytes | Install token (random, generated on first launch) |
+| `_p52` | Base64 → 8 bytes | HMAC blob (truncated HMAC-SHA256) |
+| `vkb` | Base64 → AES-GCM encrypted → 32 bytes | Key blob (encrypted with Android KeyStore key) |
+| `vitm` | long | Install timestamp |
+
+Actual values are device-specific (generated on first launch). Use Frida to read live values.
 
 ### Tartarus (`nz.ac.auckland.cs702.tartarus`)
 
