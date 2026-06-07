@@ -166,33 +166,6 @@ Actual values are device-specific (generated on first launch). Use Frida to read
 | `RESULTS.md` | Detailed analysis results |
 | `FINAL_RESULTS.md` | Final findings summary |
 
-## How to Continue (for Codex)
-
-### To extract vitality's independent key:
-1. The key is NOT in `_z05` — that's a confirmed decoy
-2. Look for alternative key sources in the native code:
-   - Functions called by `v.a()` before/after `_z05`
-   - The `u.j()` coroutine method — inspect its full bytecode
-   - Class `p.j()` — second auth attempt uses different code path
-   - The `.fake_text` section of `libreverseai-core.so` (XOR 0xaa decoded) contains embedded constants
-3. The `_z05` function expects arg1=32 bytes (decrypted key blob) and arg2=32 bytes (full HMAC-SHA256, not truncated 8 bytes)
-4. Try hooking `Mac.doFinal` during `onCreate()` to capture the full 32-byte HMAC before truncation
-
-### To extract tartarus's independent key:
-1. Need ARM64 device or cloud ARM64 emulator
-2. Use Frida to hook `probeEndpoint()` and `probeGate()` JNI methods
-3. Or use Ghidra/IDA Pro to disassemble `libtartarus_core.so` and find the key in the `probeGate` function
-4. The repo's `scripts/tartarus_hook.py` and `run_tartarus.py` have working hook templates
-
-### Key verification command:
-```bash
-curl -s -X POST https://ai.elliottwen.info/auth \
-  -H "Authorization: <KEY_HERE>" \
-  -H "Content-Type: application/json" \
-  -d '{}' | python -m json.tool
-```
-Returns `{"signature": "..."}` on success, `{"error": "Unauthorized"}` on failure.
-
 ## Environment
 
 - **OS**: Windows 10 Enterprise 10.0.19045
